@@ -1,0 +1,9 @@
+services:
+  attackatlas:
+    build: .
+    container_name: attackatlas
+    ports:
+      - "127.0.0.1:${ATTACKATLAS_PORT:-7843}:7843"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
