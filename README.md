@@ -2,7 +2,7 @@
 
 Local-first pentest/CTF workspace for visualizing hosts, services, access relationships and attack paths.
 
-## MVP features
+## ALPHA features
 - Project-based workspaces
 - Lightweight FastAPI + SQLite backend
 - React/Vite browser GUI
