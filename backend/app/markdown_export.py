@@ -91,6 +91,8 @@ def build_markdown_export(project: Project, db: Session):
         for a in accounts:
             identity = ((a.domain + '\\') if a.domain else '') + a.username
             account_lines += [f'## {_md(identity)}', '']
+            ah = host_by_id.get(a.host_id) if getattr(a, 'host_id', None) else None
+            account_lines += [f'- **Found on:** {_md((ah.hostname or ah.address) if ah else "Unassigned")}', '']
             if a.notes:
                 account_lines += [_md(a.notes), '']
         zf.writestr('accounts.md', '\n'.join(account_lines))

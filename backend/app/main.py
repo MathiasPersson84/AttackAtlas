@@ -1,4 +1,6 @@
 import os
+import csv
+import io
 from pathlib import Path
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
@@ -13,7 +15,7 @@ from .markdown_export import build_markdown_export
 
 Base.metadata.create_all(bind=engine)
 apply_lightweight_migrations()
-app = FastAPI(title='AttackAtlas API', version='0.8.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
+app = FastAPI(title='AttackAtlas API', version='0.10.1', docs_url='/api/docs', openapi_url='/api/openapi.json')
 
 
 def host_json(h: Host):
@@ -169,6 +171,7 @@ def delete_host(project_id: int, host_id: int, db: Session = Depends(get_db)):
         ((Edge.target_type == 'host') & (Edge.target_id == host_id))
     ).delete(synchronize_session=False)
     db.query(Credential).filter_by(project_id=project_id, host_id=host_id).update({'host_id': None}, synchronize_session=False)
+    db.query(Account).filter_by(project_id=project_id, host_id=host_id).update({'host_id': None}, synchronize_session=False)
     db.query(Share).filter_by(project_id=project_id, host_id=host_id).delete(synchronize_session=False)
     db.query(Service).filter_by(host_id=host_id).delete(synchronize_session=False)
     db.delete(h)
@@ -202,11 +205,13 @@ async def import_nmap_for_host(project_id: int, host_id: int, file: UploadFile =
 
 @app.get('/api/v1/projects/{project_id}/accounts')
 def accounts(project_id: int, db: Session = Depends(get_db)):
-    return [{'id': x.id, 'username': x.username, 'domain': x.domain, 'notes': x.notes} for x in db.query(Account).filter_by(project_id=project_id).all()]
+    return [{'id': x.id, 'username': x.username, 'domain': x.domain, 'notes': x.notes, 'host_id': x.host_id} for x in db.query(Account).filter_by(project_id=project_id).order_by(Account.host_id, Account.domain, Account.username).all()]
 
 
 @app.post('/api/v1/projects/{project_id}/accounts')
 def create_account(project_id: int, payload: AccountCreate, db: Session = Depends(get_db)):
+    if payload.host_id is not None and not db.query(Host).filter_by(id=payload.host_id, project_id=project_id).first():
+        raise HTTPException(400, 'Host does not belong to this project')
     x = Account(project_id=project_id, **payload.model_dump())
     db.add(x)
     db.commit()
@@ -219,10 +224,70 @@ def update_account(project_id: int, account_id: int, payload: AccountUpdate, db:
     x = db.query(Account).filter_by(id=account_id, project_id=project_id).one_or_none()
     if x is None:
         raise HTTPException(404, 'Account not found')
-    for key, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    if 'host_id' in changes and changes['host_id'] is not None and not db.query(Host).filter_by(id=changes['host_id'], project_id=project_id).first():
+        raise HTTPException(400, 'Host does not belong to this project')
+    for key, value in changes.items():
         setattr(x, key, value)
     db.commit(); db.refresh(x)
-    return {'id': x.id, 'username': x.username, 'domain': x.domain, 'notes': x.notes}
+    return {'id': x.id, 'username': x.username, 'domain': x.domain, 'notes': x.notes, 'host_id': x.host_id}
+
+
+@app.post('/api/v1/projects/{project_id}/accounts/import/csv')
+async def import_accounts_csv(project_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    raw = await file.read()
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(413, 'CSV file too large')
+    try:
+        text = raw.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        raise HTTPException(400, 'CSV must be UTF-8 encoded')
+    try:
+        reader = csv.DictReader(io.StringIO(text))
+        required = {'username'}
+        fields = {str(x).strip().lower() for x in (reader.fieldnames or [])}
+        if not required.issubset(fields):
+            raise HTTPException(400, 'CSV must contain a username column. Supported columns: username,domain,host,notes')
+        hosts = db.query(Host).filter_by(project_id=project_id).all()
+        host_lookup = {}
+        for h in hosts:
+            if h.address: host_lookup[h.address.strip().lower()] = h
+            if h.hostname: host_lookup[h.hostname.strip().lower()] = h
+        created = updated = skipped = 0
+        errors = []
+        for line_no, raw_row in enumerate(reader, start=2):
+            row = {(k or '').strip().lower(): (v or '').strip() for k, v in raw_row.items()}
+            username = row.get('username', '')
+            if not username:
+                skipped += 1
+                continue
+            domain = row.get('domain', '')
+            host_value = row.get('host', '')
+            notes = row.get('notes', '')
+            host_id = None
+            if host_value:
+                host = host_lookup.get(host_value.lower())
+                if not host:
+                    errors.append(f'Line {line_no}: host "{host_value}" was not found')
+                    continue
+                host_id = host.id
+            existing = db.query(Account).filter_by(project_id=project_id, username=username, domain=domain, host_id=host_id).first()
+            if existing:
+                if notes and notes != (existing.notes or ''):
+                    existing.notes = notes
+                    updated += 1
+                else:
+                    skipped += 1
+                continue
+            db.add(Account(project_id=project_id, username=username, domain=domain, host_id=host_id, notes=notes))
+            created += 1
+        db.commit()
+        return {'created': created, 'updated': updated, 'skipped': skipped, 'errors': errors[:50], 'error_count': len(errors)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(400, f'Could not import users CSV: {e}')
 
 
 @app.delete('/api/v1/projects/{project_id}/accounts/{account_id}')

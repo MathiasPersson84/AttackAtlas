@@ -76,6 +76,18 @@ Then either:
 
 Repeated imports are merged and services are deduplicated.
 
+## User import
+
+Users can be added manually or imported by dropping a UTF-8 CSV file on **Users** in the sidebar.
+
+```csv
+username,domain,host,notes
+administrator,CORP,DC01,Domain admin
+svc_backup,CORP,10.10.10.20,Found in backup config
+```
+
+`host` may be a hostname or IP/address already present in the project. Leave it blank for an unassigned user.
+
 ## Data and security
 
 Persistent application data is stored in:

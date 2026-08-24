@@ -41,6 +41,11 @@ def apply_lightweight_migrations():
             edge_cols = {row[1] for row in conn.execute(text('PRAGMA table_info(edges)'))}
             if 'directed' not in edge_cols:
                 conn.execute(text("ALTER TABLE edges ADD COLUMN directed INTEGER DEFAULT 1 NOT NULL"))
+        if 'accounts' in tables:
+            account_cols = {row[1] for row in conn.execute(text('PRAGMA table_info(accounts)'))}
+            if 'host_id' not in account_cols:
+                conn.execute(text("ALTER TABLE accounts ADD COLUMN host_id INTEGER"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_accounts_host_id ON accounts(host_id)"))
         if 'credentials' in tables:
             cred_cols = {row[1] for row in conn.execute(text('PRAGMA table_info(credentials)'))}
             if 'host_id' not in cred_cols:

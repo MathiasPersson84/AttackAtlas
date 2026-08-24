@@ -4,6 +4,25 @@ All notable changes to AttackAtlas are documented in this file.
 
 The project is currently in alpha development. Version numbers below describe development milestones and do not yet imply API stability.
 
+## [0.10.1] - 2026-08-24
+
+### Added
+- Existing users/accounts can now be edited after creation or CSV import.
+- Username, domain, source host and notes can be corrected without recreating the user.
+- Users in the left sidebar open directly in edit mode.
+
+## [0.10.0] - 2026-08-24
+
+### Added
+- Added `cookie` as a credential type.
+- Added a Users section in the left sidebar, grouped by the host where each account was found.
+- Added host association for manually created users/accounts.
+- Added drag-and-drop CSV user import using `username,domain,host,notes`.
+
+### Changed
+- Increased typography and width in the left navigation panel for improved readability.
+- Markdown account exports now include the host where an account was found.
+
 ## [0.9.1] - 2026-08-23
 
 ### Changed

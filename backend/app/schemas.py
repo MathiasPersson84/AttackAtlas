@@ -39,11 +39,13 @@ class AccountCreate(BaseModel):
     username: str
     domain: str = ''
     notes: str = ''
+    host_id: int | None = None
 
 class AccountUpdate(BaseModel):
     username: str | None = None
     domain: str | None = None
     notes: str | None = None
+    host_id: int | None = None
 
 class CredentialCreate(BaseModel):
     account_id: int | None = None

@@ -62,6 +62,7 @@ class Account(Base):
     username = Column(String(255), nullable=False)
     domain = Column(String(255), default='')
     notes = Column(Text, default='')
+    host_id = Column(Integer, ForeignKey('hosts.id', ondelete='SET NULL'), nullable=True, index=True)
 
 class Credential(Base):
     __tablename__ = 'credentials'
