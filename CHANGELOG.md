@@ -4,6 +4,21 @@ All notable changes to AttackAtlas are documented in this file.
 
 The project is currently in alpha development. Version numbers below describe development milestones and do not yet imply API stability.
 
+## [0.11.1] - 2026-08-25
+
+### Added
+- Added **Add user** to each host card hamburger menu, preselecting that host as the discovery source.
+- User groups in the left sidebar can now be expanded or collapsed per host.
+- Clicking a user in the sidebar copies the username; a separate edit button opens the user editor.
+
+### Changed
+- Improved visual separation of host-based user groups with clearer borders and OS-family accents.
+- Connection mode can now be cancelled from the toolbar, with an inline Cancel action or by pressing Escape.
+- Completing a connection returns the canvas to Select mode instead of leaving Connect mode active.
+
+### Fixed
+- Fixed Add connection from the host hamburger menu leaving the canvas stuck in connection mode.
+
 ## [0.11.0] - 2026-08-25
 
 ### Added
