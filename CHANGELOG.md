@@ -4,6 +4,19 @@ All notable changes to AttackAtlas are documented in this file.
 
 The project is currently in alpha development. Version numbers below describe development milestones and do not yet imply API stability.
 
+## [0.11.0] - 2026-08-25
+
+### Added
+- Added **Attacker Machine** as a host status.
+- Added a separate host domain field and FQDN display (`HOST.DOMAIN`) on host cards.
+- Added click-to-copy behavior for visible host card values and host identity details.
+- Credentials can create and associate a previously unknown username/domain directly from the Add Credential flow.
+
+### Changed
+- Simplified host card actions into a single hamburger menu to give the hostname more horizontal space.
+- Hostnames/FQDNs stay on one line on host cards.
+- Separated user management and credential management into distinct dialogs/workflows.
+
 ## [0.10.1] - 2026-08-24
 
 ### Added

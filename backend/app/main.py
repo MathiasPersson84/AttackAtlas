@@ -15,7 +15,7 @@ from .markdown_export import build_markdown_export
 
 Base.metadata.create_all(bind=engine)
 apply_lightweight_migrations()
-app = FastAPI(title='AttackAtlas API', version='0.10.1', docs_url='/api/docs', openapi_url='/api/openapi.json')
+app = FastAPI(title='AttackAtlas API', version='0.11.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
 
 
 def host_json(h: Host):
@@ -23,6 +23,7 @@ def host_json(h: Host):
         'id': h.id,
         'address': h.address,
         'hostname': h.hostname,
+        'domain': h.domain or '',
         'os': h.os,
         'os_family': h.os_family or 'unknown',
         'device_type': h.device_type or 'host',
@@ -252,7 +253,10 @@ async def import_accounts_csv(project_id: int, file: UploadFile = File(...), db:
         host_lookup = {}
         for h in hosts:
             if h.address: host_lookup[h.address.strip().lower()] = h
-            if h.hostname: host_lookup[h.hostname.strip().lower()] = h
+            if h.hostname:
+                host_lookup[h.hostname.strip().lower()] = h
+                if h.domain:
+                    host_lookup[f'{h.hostname.strip()}.{h.domain.strip()}'.lower()] = h
         created = updated = skipped = 0
         errors = []
         for line_no, raw_row in enumerate(reader, start=2):
@@ -311,11 +315,22 @@ def credentials(project_id: int, db: Session = Depends(get_db)):
 
 @app.post('/api/v1/projects/{project_id}/credentials')
 def create_credential(project_id: int, payload: CredentialCreate, db: Session = Depends(get_db)):
-    if payload.account_id is not None and not db.query(Account).filter_by(id=payload.account_id, project_id=project_id).first():
+    data = payload.model_dump()
+    username = (data.pop('username', '') or '').strip()
+    domain = (data.pop('domain', '') or '').strip()
+    account_id = data.get('account_id')
+    if account_id is not None and not db.query(Account).filter_by(id=account_id, project_id=project_id).first():
         raise HTTPException(400, 'Account does not belong to this project')
-    if payload.host_id is not None and not db.query(Host).filter_by(id=payload.host_id, project_id=project_id).first():
+    if data.get('host_id') is not None and not db.query(Host).filter_by(id=data['host_id'], project_id=project_id).first():
         raise HTTPException(400, 'Host does not belong to this project')
-    x = Credential(project_id=project_id, **payload.model_dump())
+    if account_id is None and username:
+        account = db.query(Account).filter_by(project_id=project_id, username=username, domain=domain, host_id=data.get('host_id')).first()
+        if account is None:
+            account = Account(project_id=project_id, username=username, domain=domain, host_id=data.get('host_id'), notes='Created with credential')
+            db.add(account)
+            db.flush()
+        data['account_id'] = account.id
+    x = Credential(project_id=project_id, **data)
     db.add(x)
     db.commit()
     db.refresh(x)
@@ -328,10 +343,20 @@ def update_credential(project_id: int, credential_id: int, payload: CredentialUp
     if x is None:
         raise HTTPException(404, 'Credential not found')
     changes = payload.model_dump(exclude_unset=True)
+    username = (changes.pop('username', None) or '').strip() if 'username' in changes else ''
+    domain = (changes.pop('domain', None) or '').strip() if 'domain' in changes else ''
     if 'account_id' in changes and changes['account_id'] is not None and not db.query(Account).filter_by(id=changes['account_id'], project_id=project_id).first():
         raise HTTPException(400, 'Account does not belong to this project')
     if 'host_id' in changes and changes['host_id'] is not None and not db.query(Host).filter_by(id=changes['host_id'], project_id=project_id).first():
         raise HTTPException(400, 'Host does not belong to this project')
+    if changes.get('account_id') is None and username:
+        host_id = changes.get('host_id', x.host_id)
+        account = db.query(Account).filter_by(project_id=project_id, username=username, domain=domain, host_id=host_id).first()
+        if account is None:
+            account = Account(project_id=project_id, username=username, domain=domain, host_id=host_id, notes='Created with credential')
+            db.add(account)
+            db.flush()
+        changes['account_id'] = account.id
     for key, value in changes.items():
         setattr(x, key, value)
     db.commit(); db.refresh(x)

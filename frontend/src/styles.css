@@ -148,3 +148,22 @@
 .sidebar-user .sidebar-user-edit{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:#657c89;opacity:0;transition:opacity .12s,color .12s}
 .sidebar-user:hover .sidebar-user-edit{opacity:1;color:#9fc8df}
 .sidebar-user b,.sidebar-user span{padding-right:22px}
+
+/* v0.11.0 host identity, copy affordances and separated account/credential flows */
+.node{overflow:visible}
+.node-top{align-items:center}
+.identity{overflow:hidden}
+.identity .copy-field{display:block;width:100%;border:0;background:transparent;padding:0;text-align:left;cursor:copy;white-space:nowrap;overflow:hidden;color:inherit}
+.identity .copy-field:hover{color:#7dc5ff}
+.identity .fqdn{font-size:14px;font-weight:800;line-height:1.25;letter-spacing:-.02em;text-overflow:clip}
+.identity .address{font-size:11px;color:#8ea0ab;margin-top:4px}
+.identity .os-line{font-size:10px;color:#657b88;margin-top:3px}
+.host-actions{flex:none}.host-actions .card-menu{width:34px;height:34px;border-radius:8px}.host-actions .card-menu svg{width:18px;height:18px}
+.service-pills button{border:0;background:#17242d;color:#8fa7b4;border-radius:6px;padding:4px 7px;font-size:10px;cursor:copy}.service-pills button:hover{color:#d7edfa;background:#203440}
+.node-foot button{border:0;background:transparent;color:#70838f;font-size:9px;padding:0;cursor:copy}.node-foot button:hover{color:#b9d8e8}.node-foot .status{padding:3px 7px}
+.status.attacker{background:#381b49!important;color:#e6a8ff!important;border-color:#6f3789!important}
+.field-hint{display:block;margin-top:5px;color:#6f828e;font-size:10px}
+.inspector-copy,.detail-copy{border:0;background:transparent;color:#8fa2ad;padding:0;display:inline-flex;gap:6px;align-items:center;cursor:copy;text-align:left}.inspector-copy:hover,.detail-copy:hover{color:#ccecff}.inspector-copy svg,.detail-copy svg{width:12px;height:12px;flex:none}
+.user-modal{width:min(920px,95vw);max-height:88vh;overflow:auto}.user-manager-grid{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(360px,1.15fr);gap:18px}.user-manager-list{min-width:0}.user-manager-row{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;border:1px solid #202d35;background:#0c1318;color:#d3e0e7;padding:12px 13px;border-radius:8px;margin-bottom:7px;cursor:pointer}.user-manager-row:hover,.user-manager-row.is-editing{background:#12212a;border-color:#3c718f}.user-manager-row b,.user-manager-row span,.user-manager-row small{display:block}.user-manager-row b{font-size:13px}.user-manager-row span,.user-manager-row small{font-size:10px;color:#78909d;margin-top:3px}.user-manager-row svg{width:15px;color:#738994}
+.credential-only{width:min(820px,95vw)}.credential-main-form{margin-top:0}.inline-new-account{margin:4px 0 12px;padding:12px;border:1px dashed #314753;background:#0b151b;border-radius:8px}.inline-new-account>span{display:block;font-size:11px;color:#9bb0bc;margin-bottom:9px}.inline-new-account>small{display:block;color:#6f8490;font-size:10px;margin-top:7px}
+@media(max-width:760px){.user-manager-grid{grid-template-columns:1fr}}

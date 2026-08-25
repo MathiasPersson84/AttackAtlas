@@ -52,6 +52,7 @@ def build_markdown_export(project: Project, db: Session):
                 f'# {_md(title)}', '',
                 f'- **Address:** `{_md(h.address)}`',
                 f'- **Hostname:** {_md(h.hostname) or "—"}',
+                f'- **Domain:** {_md(h.domain) or "—"}',
                 f'- **OS:** {_md(h.os) or "—"}',
                 f'- **OS family:** {_md(h.os_family) or "unknown"}',
                 f'- **Device type:** {_md(h.device_type) or "host"}',

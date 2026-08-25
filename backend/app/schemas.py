@@ -13,6 +13,7 @@ class ProjectUpdate(BaseModel):
 class HostCreate(BaseModel):
     address: str
     hostname: str = ''
+    domain: str = ''
     os: str = ''
     os_family: str = 'unknown'
     device_type: str = 'host'
@@ -24,6 +25,7 @@ class HostCreate(BaseModel):
 class HostUpdate(BaseModel):
     address: str | None = None
     hostname: str | None = None
+    domain: str | None = None
     os: str | None = None
     os_family: str | None = None
     device_type: str | None = None
@@ -49,6 +51,8 @@ class AccountUpdate(BaseModel):
 
 class CredentialCreate(BaseModel):
     account_id: int | None = None
+    username: str = ''
+    domain: str = ''
     kind: str = 'password'
     secret: str
     source: str = 'manual'
@@ -57,6 +61,8 @@ class CredentialCreate(BaseModel):
 
 class CredentialUpdate(BaseModel):
     account_id: int | None = None
+    username: str | None = None
+    domain: str | None = None
     kind: str | None = None
     secret: str | None = None
     source: str | None = None

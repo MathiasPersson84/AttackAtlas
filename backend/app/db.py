@@ -22,6 +22,7 @@ def apply_lightweight_migrations():
             return
         cols = {row[1] for row in conn.execute(text('PRAGMA table_info(hosts)'))}
         additions = {
+            'domain': "ALTER TABLE hosts ADD COLUMN domain VARCHAR(255) DEFAULT ''",
             'os_family': "ALTER TABLE hosts ADD COLUMN os_family VARCHAR(32) DEFAULT 'unknown'",
             'device_type': "ALTER TABLE hosts ADD COLUMN device_type VARCHAR(32) DEFAULT 'host'",
             'sort_order': "ALTER TABLE hosts ADD COLUMN sort_order INTEGER DEFAULT 0 NOT NULL",

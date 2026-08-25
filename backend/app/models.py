@@ -19,6 +19,7 @@ class Host(Base):
     project_id = Column(Integer, ForeignKey('projects.id', ondelete='CASCADE'), nullable=False, index=True)
     address = Column(String(255), nullable=False)
     hostname = Column(String(255), default='')
+    domain = Column(String(255), default='')
     os = Column(String(255), default='')
     os_family = Column(String(32), default='unknown')
     device_type = Column(String(32), default='host')
