@@ -4,6 +4,53 @@ All notable changes to AttackAtlas are documented in this file.
 
 The project is currently in alpha development. Version numbers below describe development milestones and do not yet imply API stability.
 
+## [0.13.3] - 2026-08-25
+
+### Changed
+- Moved Projects out of the Hosts section into its own top-level sidebar view.
+- Added dedicated Projects, Hosts and Users navigation tabs.
+- The Hosts view now clearly shows the active project and provides a shortcut back to project selection.
+- The Projects view includes a prominent New project action and active-project indicator.
+
+## [0.13.2] - 2026-08-25
+
+### Fixed
+- Hardened the Add Host submit flow so failures are no longer silent.
+- Add Host now reports missing project, missing address, duplicate address and API errors directly inside the dialog.
+- Added an explicit submit button and loading state to prevent accidental duplicate submissions.
+
+## [0.13.1] - 2026-08-25
+
+### Changed
+- Reserved red exclusively for the `UNASSIGNED` group in both the canvas and Users sidebar.
+- Normal domain groups now rotate through a five-color palette that excludes red.
+
+## [0.13.0] - 2026-08-25
+
+### Added
+- Shape-following domain hulls using smoothed convex contours around host cards.
+- Dedicated Hosts and Users sidebar views.
+- User search and quick CSV import in the Users view.
+- Domain → host → user hierarchy with independent expand/collapse controls.
+- Direct copy and edit controls for each user.
+- Quick Add user and Add credential actions in the main header.
+
+### Changed
+- Domain regions now follow pyramid and irregular host layouts instead of rectangular bounding boxes.
+- Unassigned hosts and users receive a subdued purple visual group.
+- Users sidebar styling now mirrors domain grouping on the canvas.
+
+## [0.12.0] - 2026-08-25
+
+### Added
+- Dynamic domain regions on the canvas for domains containing two or more hosts.
+- Subtle tinted backgrounds, dashed boundaries and domain labels with host counts.
+- Domain visibility toggle in the canvas toolbar.
+
+### Changed
+- Domain regions automatically resize and move as member hosts are repositioned.
+- Hosts without a domain remain ungrouped, keeping the canvas uncluttered.
+
 ## [0.11.1] - 2026-08-25
 
 ### Added
