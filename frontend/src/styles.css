@@ -281,3 +281,7 @@
 .sidebar-add-project{height:44px;margin:12px 4px 0;border:1px solid #246fa9;border-radius:8px;background:#10243a;color:#5cb8fa;font-weight:650;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
 .sidebar-add-project:hover{background:#14314c;color:#8bd0ff}
 .sidebar-add-project svg{width:16px;height:16px}
+
+/* v0.14.0 - SVG snapshot export */
+.toolbar button[title*="SVG"]{border-color:#315263;background:#101b22}
+.toolbar button[title*="SVG"]:hover{border-color:#4386aa;background:#122733;color:#dff3ff}

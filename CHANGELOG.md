@@ -4,6 +4,16 @@ All notable changes to AttackAtlas are documented in this file.
 
 The project is currently in alpha development. Version numbers below describe development milestones and do not yet imply API stability.
 
+## [0.14.0] - 2026-08-26
+
+### Added
+- SVG snapshot export for the current visualization.
+- Snapshot includes host cards, domain hulls, attack-path edges, labels and project name.
+- Export automatically crops to the host layout with padding and preserves vector quality.
+
+### Changed
+- UI panels and controls are intentionally excluded from snapshots so exports are report-friendly.
+
 ## [0.13.3] - 2026-08-25
 
 ### Changed

@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {Network,Plus,Upload,Server,Monitor,Router,Box,Apple,Link2,MousePointer2,Trash2,X,ScanLine,ZoomIn,ZoomOut,Maximize2,Hand,PanelRightClose,PanelRightOpen,StickyNote,Activity,ArrowRight,RotateCcw,KeyRound,Eye,EyeOff,Copy,Edit3,ChevronRight,ChevronDown,UserPlus,Users,FileUp,Save,Unlink,Menu,Pencil,Settings,Download,FileText,Search} from 'lucide-react';
+import {Network,Plus,Upload,Server,Monitor,Router,Box,Apple,Link2,MousePointer2,Trash2,X,ScanLine,ZoomIn,ZoomOut,Maximize2,Hand,PanelRightClose,PanelRightOpen,StickyNote,Activity,ArrowRight,RotateCcw,KeyRound,Eye,EyeOff,Copy,Edit3,ChevronRight,ChevronDown,UserPlus,Users,FileUp,Save,Unlink,Menu,Pencil,Settings,Download,FileText,Search,FileImage} from 'lucide-react';
 import './styles.css';
 
 type Project={id:number,name:string,description?:string,notes?:string};
@@ -69,6 +69,11 @@ function domainHull(items:Host[],pad=34){
  const hull=convexHull(points),path=smoothClosedPath(hull),top=Math.min(...hull.map(p=>p.y)),left=Math.min(...hull.map(p=>p.x)),right=Math.max(...hull.map(p=>p.x));
  return {path,labelX:(left+right)/2,labelY:top};
 }
+
+
+function escSvg(value:any){return String(value??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[m] as string))}
+function svgStatusColor(status:string){return status==='owned'?'#42d392':status==='admin'?'#f0b94a':status==='access'?'#5ac8fa':status==='attacker'?'#ff5b62':'#8194a0'}
+function svgOsColor(os:string){return os==='windows'?'#43a4f4':os==='linux'?'#62cf78':os==='macos'?'#b889f2':os==='network'?'#55c1ca':'#8da0aa'}
 
 function App(){
  const [projects,setProjects]=useState<Project[]>([]),[pid,setPid]=useState<number|null>(null),[hosts,setHosts]=useState<Host[]>([]),[edges,setEdges]=useState<Edge[]>([]),[accounts,setAccounts]=useState<Account[]>([]),[credentials,setCredentials]=useState<Credential[]>([]);
@@ -178,6 +183,42 @@ function App(){
  async function copyValue(value:string,label='Value'){if(!value)return;try{await navigator.clipboard.writeText(value);setMsg(`${label} copied`)}catch{setMsg(`Could not copy ${label.toLowerCase()}`)}}
  function zoomAt(next:number){setZoom(clamp(next,.45,1.8))}
  function fitView(){if(!viewportRef.current||hosts.length===0){setPan({x:0,y:0});setZoom(1);return}const minX=Math.min(...hosts.map(h=>h.pos_x)),minY=Math.min(...hosts.map(h=>h.pos_y)),maxX=Math.max(...hosts.map(h=>h.pos_x+NODE_W)),maxY=Math.max(...hosts.map(h=>h.pos_y+NODE_H));const r=viewportRef.current.getBoundingClientRect(),pad=90,z=clamp(Math.min((r.width-pad*2)/(maxX-minX),(r.height-pad*2)/(maxY-minY)),.45,1.35);setZoom(z);setPan({x:(r.width-(maxX-minX)*z)/2-minX*z,y:(r.height-(maxY-minY)*z)/2-minY*z})}
+
+ function exportSvgSnapshot(){
+  if(!hosts.length){setMsg('Nothing to export yet. Add at least one host.');return}
+  const pad=90;
+  const minX=Math.max(0,Math.min(...hosts.map(h=>h.pos_x))-pad),minY=Math.max(0,Math.min(...hosts.map(h=>h.pos_y))-pad);
+  const maxX=Math.min(WORLD_W,Math.max(...hosts.map(h=>h.pos_x+NODE_W))+pad),maxY=Math.min(WORLD_H,Math.max(...hosts.map(h=>h.pos_y+NODE_H))+pad);
+  const width=Math.max(640,maxX-minX),height=Math.max(420,maxY-minY);
+  const parts:string[]=[];
+  parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${minX} ${minY} ${width} ${height}">`);
+  parts.push(`<defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#162128" stroke-width="1"/></pattern><marker id="snap-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#8598a5"/></marker></defs>`);
+  parts.push(`<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="#090f13"/><rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="url(#grid)"/>`);
+  if(showDomains){
+   for(const g of domainGroups){
+    const stroke=g.domain==='UNASSIGNED'?'#ff3b3b':['#2fa1ee','#58c96e','#a966e9','#dca84d','#5db9c2'][g.index%5];
+    const fill=g.domain==='UNASSIGNED'?'rgba(164,42,42,.055)':['rgba(30,99,146,.05)','rgba(48,135,76,.05)','rgba(112,69,153,.055)','rgba(137,92,31,.05)','rgba(45,119,126,.05)'][g.index%5];
+    parts.push(`<path d="${g.path}" fill="${fill}" stroke="${stroke}" stroke-width="1.6" stroke-dasharray="8 6"/>`);
+    parts.push(`<g transform="translate(${g.labelX},${g.labelY})"><rect x="-88" y="-18" width="176" height="36" rx="18" fill="#101a21" stroke="${stroke}"/><text x="0" y="4" text-anchor="middle" fill="#e5f2f8" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700">${escSvg(g.domain)} · ${g.items.length} ${g.items.length===1?'host':'hosts'}</text></g>`);
+   }
+  }
+  for(const e of edges.filter(e=>e.source_type==='host'&&e.target_type==='host'&&byId[e.source_id]&&byId[e.target_id])){
+   const p=edgePath(byId[e.source_id],byId[e.target_id]);
+   parts.push(`<path d="${p.d}" fill="none" stroke="#748995" stroke-width="2" ${e.directed?'marker-end="url(#snap-arrow)"':''}/>`);
+   const label=e.label||e.relation;
+   if(label)parts.push(`<g transform="translate(${p.mx},${p.my})"><rect x="-68" y="-13" width="136" height="26" rx="7" fill="#0c1318" stroke="#26343e"/><text x="0" y="4" text-anchor="middle" fill="#d7e1e7" font-family="Arial,Helvetica,sans-serif" font-size="10">${escSvg(label)}</text></g>`);
+  }
+  for(const h of hosts){
+   const x=h.pos_x,y=h.pos_y,accent=svgOsColor(h.os_family),fqdn=hostFqdn(h),ports=h.services.slice(0,5).map(s=>`${s.port}/${s.protocol}`).join('  ');
+   const credCount=credentials.filter(c=>c.host_id===h.id).length;
+   parts.push(`<g transform="translate(${x},${y})"><rect width="${NODE_W}" height="${NODE_H}" rx="11" fill="#0e161c" stroke="${accent}" stroke-width="1.5"/><rect x="13" y="13" width="42" height="42" rx="8" fill="#15212a"/><circle cx="34" cy="34" r="8" fill="${accent}" opacity=".9"/><text x="68" y="29" fill="#eef7fb" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700">${escSvg(fqdn)}</text><text x="68" y="47" fill="#8ca0ab" font-family="Arial,Helvetica,sans-serif" font-size="10">${escSvg(h.address)}</text><text x="14" y="78" fill="#8fa4af" font-family="Arial,Helvetica,sans-serif" font-size="10">${escSvg(h.os||h.os_family||'Unknown')} · ${escSvg(h.device_type)}</text><circle cx="18" cy="101" r="4" fill="${svgStatusColor(h.status)}"/><text x="29" y="105" fill="#a9bbc4" font-family="Arial,Helvetica,sans-serif" font-size="9">${escSvg(h.status||'discovered')}</text><line x1="14" y1="117" x2="${NODE_W-14}" y2="117" stroke="#22323b"/><text x="14" y="139" fill="#82a0b0" font-family="Arial,Helvetica,sans-serif" font-size="9">${escSvg(ports||'No services')}</text><text x="14" y="165" fill="#78909d" font-family="Arial,Helvetica,sans-serif" font-size="9">Services ${h.services.length}   Credentials ${credCount}</text></g>`);
+  }
+  const projectName=projects.find(p=>p.id===pid)?.name||'AttackAtlas';
+  parts.push(`<text x="${minX+14}" y="${minY+25}" fill="#6f8794" font-family="Arial,Helvetica,sans-serif" font-size="11">AttackAtlas · ${escSvg(projectName)}</text></svg>`);
+  const blob=new Blob([parts.join('')],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  const safe=projectName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'project';
+  a.href=url;a.download=`attackatlas-${safe}-snapshot.svg`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setMsg('SVG snapshot exported');
+ }
  function contextMenu(e:React.MouseEvent,h:Host){e.preventDefault();e.stopPropagation();setSelectedHost(h.id);setCtx({x:e.clientX,y:e.clientY,hostId:h.id})}
 
  const edgeModal=edgeDraft||edgeEdit;
@@ -195,7 +236,7 @@ function App(){
   <main><header><div><h1>{projects.find(p=>p.id===pid)?.name||'AttackAtlas'}</h1><p>Map systems, services, credentials and attack paths.</p></div><div className="header-actions"><button className="add-host" onClick={()=>{setHostFormError('');setAddOpen(true)}}><Server/> Add host</button><button className="header-secondary" onClick={()=>openUsers()}><UserPlus/> Add user</button><button className="header-secondary" onClick={()=>openCredentials()}><KeyRound/> Add credential</button>{pid&&<button className="project-export-btn" onClick={exportMarkdown}><Download/> Export</button>}{pid&&<button className="project-settings-btn icon-only" onClick={openProjectSettings} title="Project settings"><Settings/></button>}<label className="import compact-import" title="Import Nmap XML"><Upload/> Nmap<input hidden type="file" accept=".xml,text/xml" onChange={e=>e.target.files?.[0]&&upload(e.target.files[0])}/></label></div></header>
    <input ref={nmapInputRef} hidden type="file" accept=".xml,text/xml" onChange={e=>{const f=e.target.files?.[0];if(f)upload(f,pendingScanHost.current?byId[pendingScanHost.current]:undefined);e.currentTarget.value=''}}/>
    {msg&&<div className="notice"><span>{msg}</span><button onClick={()=>setMsg('')}><X/></button></div>}
-   <div className="toolbar"><button className={mode==='select'?'active':''} onClick={()=>{setMode('select');setConnectFrom(null)}}><MousePointer2/> Select</button><button className={mode==='pan'?'active':''} onClick={()=>{setMode('pan');setConnectFrom(null)}}><Hand/> Pan</button><button className={mode==='connect'?'active':''} onClick={()=>{if(mode==='connect')cancelConnection();else{setMode('connect');setConnectFrom(null);setMsg('Select a source host')}}}><Link2/> {mode==='connect'?'Cancel connection':'Connect'}</button>{connectFrom&&<span className="connect-hint">Source: {hostFqdn(byId[connectFrom])} → choose target <button className="connect-cancel-inline" onClick={cancelConnection}><X/> Cancel</button></span>}<button className={showDomains?'active domain-toggle':''} onClick={()=>setShowDomains(v=>!v)} title="Show or hide domain groups"><Network/> Domains</button><div className="toolbar-spacer"/>{selectedEdge!==null&&<><button onClick={()=>{const e=edges.find(x=>x.id===selectedEdge);if(e)openEdgeEditor(e)}}><Edit3/> Edit edge</button><button className="danger" onClick={()=>deleteEdge()}><Trash2/> Delete edge</button></>}<button onClick={()=>zoomAt(zoom-.1)}><ZoomOut/></button><span className="zoom-label">{Math.round(zoom*100)}%</span><button onClick={()=>zoomAt(zoom+.1)}><ZoomIn/></button><button onClick={fitView}><Maximize2/> Fit</button><span><Server/> {hosts.length}</span><span><ScanLine/> {totalServices}</span><button onClick={()=>setPanelOpen(v=>!v)}>{panelOpen?<PanelRightClose/>:<PanelRightOpen/>}</button></div>
+   <div className="toolbar"><button className={mode==='select'?'active':''} onClick={()=>{setMode('select');setConnectFrom(null)}}><MousePointer2/> Select</button><button className={mode==='pan'?'active':''} onClick={()=>{setMode('pan');setConnectFrom(null)}}><Hand/> Pan</button><button className={mode==='connect'?'active':''} onClick={()=>{if(mode==='connect')cancelConnection();else{setMode('connect');setConnectFrom(null);setMsg('Select a source host')}}}><Link2/> {mode==='connect'?'Cancel connection':'Connect'}</button>{connectFrom&&<span className="connect-hint">Source: {hostFqdn(byId[connectFrom])} → choose target <button className="connect-cancel-inline" onClick={cancelConnection}><X/> Cancel</button></span>}<button className={showDomains?'active domain-toggle':''} onClick={()=>setShowDomains(v=>!v)} title="Show or hide domain groups"><Network/> Domains</button><button onClick={exportSvgSnapshot} title="Export the current map as SVG"><FileImage/> Snapshot SVG</button><div className="toolbar-spacer"/>{selectedEdge!==null&&<><button onClick={()=>{const e=edges.find(x=>x.id===selectedEdge);if(e)openEdgeEditor(e)}}><Edit3/> Edit edge</button><button className="danger" onClick={()=>deleteEdge()}><Trash2/> Delete edge</button></>}<button onClick={()=>zoomAt(zoom-.1)}><ZoomOut/></button><span className="zoom-label">{Math.round(zoom*100)}%</span><button onClick={()=>zoomAt(zoom+.1)}><ZoomIn/></button><button onClick={fitView}><Maximize2/> Fit</button><span><Server/> {hosts.length}</span><span><ScanLine/> {totalServices}</span><button onClick={()=>setPanelOpen(v=>!v)}>{panelOpen?<PanelRightClose/>:<PanelRightOpen/>}</button></div>
    <section className={`workspace ${panelOpen&&selected?'with-panel':''}`}>
     <div className="viewport" ref={viewportRef} onPointerDown={viewportPointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();zoomAt(zoom+(e.deltaY<0?.08:-.08))}}} onDragEnter={e=>{if(e.dataTransfer.types.includes('Files'))setGlobalDrop(true)}} onDragOver={e=>{if(e.dataTransfer.types.includes('Files')){e.preventDefault();e.dataTransfer.dropEffect='copy'}}} onDragLeave={e=>{if(e.currentTarget===e.target)setGlobalDrop(false)}} onDrop={e=>{if(e.dataTransfer.files?.length){e.preventDefault();setGlobalDrop(false);upload(e.dataTransfer.files[0])}}}>
      <div className="world" style={{width:WORLD_W,height:WORLD_H,transform:`translate(${pan.x}px,${pan.y}px) scale(${zoom})`}}>

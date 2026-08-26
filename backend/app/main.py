@@ -15,7 +15,7 @@ from .markdown_export import build_markdown_export
 
 Base.metadata.create_all(bind=engine)
 apply_lightweight_migrations()
-app = FastAPI(title='AttackAtlas API', version='0.13.3', docs_url='/api/docs', openapi_url='/api/openapi.json')
+app = FastAPI(title='AttackAtlas API', version='0.14.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
 
 
 def host_json(h: Host):
