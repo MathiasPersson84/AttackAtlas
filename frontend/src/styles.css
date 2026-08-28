@@ -285,3 +285,13 @@
 /* v0.14.0 - SVG snapshot export */
 .toolbar button[title*="SVG"]{border-color:#315263;background:#101b22}
 .toolbar button[title*="SVG"]:hover{border-color:#4386aa;background:#122733;color:#dff3ff}
+
+
+.attackatlas-brand-logo {
+  display: block;
+  width: min(100%, 270px);
+  height: auto;
+  max-height: 58px;
+  object-fit: contain;
+  object-position: left center;
+}

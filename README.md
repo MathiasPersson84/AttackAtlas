@@ -1,4 +1,6 @@
-# AttackAtlas
+<p align="center">
+  <img src="docs/images/attackatlas-logo.png" alt="AttackAtlas" width="820">
+</p>
 
 AttackAtlas is a lightweight, local-first workspace for visualizing hosts, services, users, credentials and attack paths during authorized penetration tests, CTFs and lab environments.
 
