@@ -39,14 +39,37 @@ async function api(path:string,init?:RequestInit){const r=await fetch(path,init)
 function HostIcon({host}:{host:Host}){if(host.device_type==='network')return <Router/>;if(host.device_type==='container')return <Box/>;if(host.os_family==='macos')return <Apple/>;if(host.device_type==='workstation')return <Monitor/>;return <Server/>}
 function hostFqdn(host:Host){const hn=(host.hostname||'').trim(),domain=(host.domain||'').trim();if(!hn)return host.address;if(!domain)return hn.toUpperCase();if(hn.toLowerCase().endsWith('.'+domain.toLowerCase()))return hn.toUpperCase();return `${hn}.${domain}`.toUpperCase()}
 function clamp(v:number,min:number,max:number){return Math.max(min,Math.min(max,v))}
-function edgePath(a:Host,b:Host){
+function edgePath(a:Host,b:Host,lane=0){
  const ac={x:a.pos_x+NODE_W/2,y:a.pos_y+NODE_H/2},bc={x:b.pos_x+NODE_W/2,y:b.pos_y+NODE_H/2};
  const dx=bc.x-ac.x,dy=bc.y-ac.y;let x1=ac.x,y1=ac.y,x2=bc.x,y2=bc.y,side:'h'|'v'='h';
  if(Math.abs(dx)>=Math.abs(dy)){x1=a.pos_x+(dx>=0?NODE_W:0);y1=ac.y;x2=b.pos_x+(dx>=0?0:NODE_W);y2=bc.y;side='h'}
  else{y1=a.pos_y+(dy>=0?NODE_H:0);x1=ac.x;y2=b.pos_y+(dy>=0?0:NODE_H);x2=bc.x;side='v'}
  const bend=clamp((side==='h'?Math.abs(x2-x1):Math.abs(y2-y1))*.45,55,180);
- const d=side==='h'?`M ${x1} ${y1} C ${x1+(dx>=0?bend:-bend)} ${y1}, ${x2+(dx>=0?-bend:bend)} ${y2}, ${x2} ${y2}`:`M ${x1} ${y1} C ${x1} ${y1+(dy>=0?bend:-bend)}, ${x2} ${y2+(dy>=0?-bend:bend)}, ${x2} ${y2}`;
- return {d,mx:(x1+x2)/2,my:(y1+y2)/2};
+ const offset=lane*32;
+ let d:string,mx=(x1+x2)/2,my=(y1+y2)/2;
+ if(side==='h'){
+  const c1x=x1+(dx>=0?bend:-bend),c2x=x2+(dx>=0?-bend:bend);
+  d=`M ${x1} ${y1} C ${c1x} ${y1+offset}, ${c2x} ${y2+offset}, ${x2} ${y2}`;
+  my+=offset*.75;
+ }else{
+  const c1y=y1+(dy>=0?bend:-bend),c2y=y2+(dy>=0?-bend:bend);
+  d=`M ${x1} ${y1} C ${x1+offset} ${c1y}, ${x2+offset} ${c2y}, ${x2} ${y2}`;
+  mx+=offset*.75;
+ }
+ return {d,mx,my};
+}
+function parallelEdgeLanes(edges:Edge[]){
+ const groups=new Map<string,Edge[]>(),lanes=new Map<number,number>();
+ for(const e of edges){
+  if(e.source_type!=='host'||e.target_type!=='host')continue;
+  const a=Math.min(e.source_id,e.target_id),b=Math.max(e.source_id,e.target_id),key=`${a}:${b}`;
+  groups.set(key,[...(groups.get(key)||[]),e]);
+ }
+ for(const group of groups.values()){
+  const rows=[...group].sort((a,b)=>a.id-b.id),n=rows.length;
+  rows.forEach((e,i)=>lanes.set(e.id,i-(n-1)/2));
+ }
+ return lanes;
 }
 
 
@@ -91,6 +114,7 @@ function App(){
  const viewportRef=useRef<HTMLDivElement>(null),trashRef=useRef<HTMLDivElement>(null),nmapInputRef=useRef<HTMLInputElement>(null),pendingScanHost=useRef<number|null>(null);
 
  const byId=useMemo(()=>Object.fromEntries(hosts.map(h=>[h.id,h])),[hosts]);
+ const edgeLanes=useMemo(()=>parallelEdgeLanes(edges),[edges]);
  const domainGroups=useMemo(()=>{
   const groups=new Map<string,Host[]>();
   for(const h of hosts){const domain=(h.domain||'').trim().toUpperCase()||'UNASSIGNED';groups.set(domain,[...(groups.get(domain)||[]),h])}
@@ -203,7 +227,7 @@ function App(){
    }
   }
   for(const e of edges.filter(e=>e.source_type==='host'&&e.target_type==='host'&&byId[e.source_id]&&byId[e.target_id])){
-   const p=edgePath(byId[e.source_id],byId[e.target_id]);
+   const p=edgePath(byId[e.source_id],byId[e.target_id],edgeLanes.get(e.id)||0);
    parts.push(`<path d="${p.d}" fill="none" stroke="#748995" stroke-width="2" ${e.directed?'marker-end="url(#snap-arrow)"':''}/>`);
    const label=e.label||e.relation;
    if(label)parts.push(`<g transform="translate(${p.mx},${p.my})"><rect x="-68" y="-13" width="136" height="26" rx="7" fill="#0c1318" stroke="#26343e"/><text x="0" y="4" text-anchor="middle" fill="#d7e1e7" font-family="Arial,Helvetica,sans-serif" font-size="10">${escSvg(label)}</text></g>`);
@@ -242,7 +266,7 @@ function App(){
      <div className="world" style={{width:WORLD_W,height:WORLD_H,transform:`translate(${pan.x}px,${pan.y}px) scale(${zoom})`}}>
       {showDomains&&<svg className="domain-hull-layer" width={WORLD_W} height={WORLD_H}>{domainGroups.map(g=><g key={g.domain} className={`domain-hull domain-tone-${g.domain==='UNASSIGNED'?'unassigned':g.index%5}`}><path d={g.path}/><g className="domain-hull-label" transform={`translate(${g.labelX},${g.labelY})`}><rect x="-88" y="-18" width="176" height="36" rx="18"/><text x="0" y="1"><tspan>{g.domain}</tspan><tspan className="domain-host-count"> · {g.items.length} {g.items.length===1?'host':'hosts'}</tspan></text></g></g>)}</svg>}
       <svg className="edge-layer" width={WORLD_W} height={WORLD_H}><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>
-       {edges.filter(e=>e.source_type==='host'&&e.target_type==='host'&&byId[e.source_id]&&byId[e.target_id]).map(e=>{const p=edgePath(byId[e.source_id],byId[e.target_id]);return <g key={e.id} className={`edge rel-${e.relation} ${selectedEdge===e.id?'selected':''}`} onClick={ev=>{ev.stopPropagation();setSelectedEdge(e.id);setSelectedHost(null)}} onDoubleClick={ev=>{ev.stopPropagation();openEdgeEditor(e)}}><path className="edge-hit" d={p.d}/><path className="edge-line" d={p.d} markerEnd={e.directed?'url(#arrow)':undefined}/><g className="edge-label" transform={`translate(${p.mx},${p.my})`}><rect x="-72" y="-17" width="144" height="34" rx="8"/><text y="-2">{e.label||e.relation}</text>{e.label&&<text className="edge-sub" y="11">{e.relation}</text>}</g></g>})}
+       {edges.filter(e=>e.source_type==='host'&&e.target_type==='host'&&byId[e.source_id]&&byId[e.target_id]).map(e=>{const p=edgePath(byId[e.source_id],byId[e.target_id],edgeLanes.get(e.id)||0);return <g key={e.id} className={`edge rel-${e.relation} ${selectedEdge===e.id?'selected':''}`} onClick={ev=>{ev.stopPropagation();setSelectedEdge(e.id);setSelectedHost(null)}} onDoubleClick={ev=>{ev.stopPropagation();openEdgeEditor(e)}}><path className="edge-hit" d={p.d}/><path className="edge-line" d={p.d} markerEnd={e.directed?'url(#arrow)':undefined}/><g className="edge-label" transform={`translate(${p.mx},${p.my})`}><rect x="-72" y="-17" width="144" height="34" rx="8"/><text y="-2">{e.label||e.relation}</text>{e.label&&<text className="edge-sub" y="11">{e.relation}</text>}</g></g>})}
        {connectDrag&&<path className="edge-preview" d={`M ${byId[connectDrag.source]?.pos_x+NODE_W/2||0} ${byId[connectDrag.source]?.pos_y+NODE_H/2||0} L ${connectDrag.x} ${connectDrag.y}`}/>}</svg>
       {hosts.map(h=><article key={h.id} data-host-id={h.id} className={`node os-${h.os_family} ${drag?.id===h.id?'dragging':''} ${hostDrop===h.id?'drop-target':''} ${connectFrom===h.id?'connect-source':''} ${selectedHost===h.id?'selected':''}`} style={{left:h.pos_x,top:h.pos_y,width:NODE_W,minHeight:NODE_H}} onPointerDown={e=>hostPointerDown(e,h)} onDoubleClick={()=>{setSelectedHost(h.id);setPanelOpen(true)}} onContextMenu={e=>contextMenu(e,h)} onDragOver={e=>{if(e.dataTransfer.files?.length){e.preventDefault();e.stopPropagation();setHostDrop(h.id)}}} onDragLeave={()=>setHostDrop(null)} onDrop={e=>{if(e.dataTransfer.files?.length){e.preventDefault();e.stopPropagation();setHostDrop(null);upload(e.dataTransfer.files[0],h)}}}>
        {(['top','right','bottom','left'] as const).map(side=><i key={side} className={`port-handle ${side}`} title="Drag to connect" onPointerDown={e=>startConnector(e,h)} onPointerMove={moveConnector} onPointerUp={endConnector}/>) }

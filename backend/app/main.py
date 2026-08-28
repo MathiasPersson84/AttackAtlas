@@ -7,15 +7,27 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from .db import Base, engine, get_db, apply_lightweight_migrations
+from .db import Base, engine, SessionLocal, get_db, apply_lightweight_migrations
 from .models import Project, Host, Service, Account, Credential, Share, Edge, Scan
 from .schemas import ProjectCreate, ProjectUpdate, HostCreate, HostUpdate, HostReorder, AccountCreate, AccountUpdate, CredentialCreate, CredentialUpdate, ShareCreate, EdgeCreate, EdgeUpdate
 from .nmap_import import import_nmap_xml
 from .markdown_export import build_markdown_export
+from .vault import initialize_vault, encrypt_secret, decrypt_secret, vault_status, VaultError
 
 Base.metadata.create_all(bind=engine)
 apply_lightweight_migrations()
-app = FastAPI(title='AttackAtlas API', version='0.14.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
+with SessionLocal() as _vault_db:
+    VAULT_INFO = initialize_vault(_vault_db)
+app = FastAPI(title='AttackAtlas API', version='0.1.0-alpha', docs_url='/api/docs', openapi_url='/api/openapi.json')
+
+
+@app.middleware('http')
+async def sensitive_response_headers(request, call_next):
+    response = await call_next(request)
+    if '/credentials' in request.url.path or '/vault/' in request.url.path:
+        response.headers['Cache-Control'] = 'no-store, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+    return response
 
 
 def host_json(h: Host):
@@ -55,6 +67,12 @@ def edge_json(e: Edge):
 @app.get('/api/health')
 def health():
     return {'status': 'ok', 'name': 'AttackAtlas'}
+
+
+@app.get('/api/v1/vault/status')
+def get_vault_status():
+    # Deliberately exposes metadata only; never returns the vault key.
+    return vault_status()
 
 
 @app.get('/api/v1/projects')
@@ -305,7 +323,7 @@ def delete_account(project_id: int, account_id: int, db: Session = Depends(get_d
 
 
 def credential_json(x: Credential):
-    return {'id': x.id, 'account_id': x.account_id, 'kind': x.kind, 'secret': x.secret, 'source': x.source, 'host_id': x.host_id, 'notes': x.notes or ''}
+    return {'id': x.id, 'account_id': x.account_id, 'kind': x.kind, 'secret': decrypt_secret(x.secret), 'source': x.source, 'host_id': x.host_id, 'notes': x.notes or ''}
 
 
 @app.get('/api/v1/projects/{project_id}/credentials')
@@ -330,6 +348,7 @@ def create_credential(project_id: int, payload: CredentialCreate, db: Session = 
             db.add(account)
             db.flush()
         data['account_id'] = account.id
+    data['secret'] = encrypt_secret(data.get('secret', ''))
     x = Credential(project_id=project_id, **data)
     db.add(x)
     db.commit()
@@ -357,6 +376,8 @@ def update_credential(project_id: int, credential_id: int, payload: CredentialUp
             db.add(account)
             db.flush()
         changes['account_id'] = account.id
+    if 'secret' in changes:
+        changes['secret'] = encrypt_secret(changes['secret'] or '')
     for key, value in changes.items():
         setattr(x, key, value)
     db.commit(); db.refresh(x)

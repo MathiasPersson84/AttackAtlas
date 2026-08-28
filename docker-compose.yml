@@ -6,4 +6,5 @@ services:
       - "127.0.0.1:${ATTACKATLAS_PORT:-7843}:7843"
     volumes:
       - ./data:/data
+      - ./secrets:/secrets
     restart: unless-stopped

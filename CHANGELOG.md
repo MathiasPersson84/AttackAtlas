@@ -1,8 +1,42 @@
 # Changelog
 
-All notable changes to AttackAtlas are documented in this file.
+All notable public releases of AttackAtlas are documented here.
 
-The project is currently in alpha development. Version numbers below describe development milestones and do not yet imply API stability.
+## [0.1.0-alpha] - 2026-08-27
+
+Initial public alpha release.
+
+### Included
+
+- Project-based local workspaces
+- Free-form host canvas with domain grouping
+- Editable attack paths and connections
+- Multiple parallel edges between the same pair of hosts, with separate visual routing
+- Host templates and host/domain editing
+- Nmap XML import with service and NSE details
+- User CSV import and user management
+- Credential management
+- Project notes and Markdown export
+- SVG visualization snapshots
+- REST API and OpenAPI documentation
+- Docker deployment with localhost-only binding by default
+
+### Security
+
+- Credential secrets are encrypted at rest in SQLite using AES-256-GCM.
+- A random local vault key is created in `./secrets/credential-vault.json` and kept separate from the database.
+- Legacy plaintext credential rows are migrated automatically on startup.
+- Startup fails safely if encrypted credentials exist but the vault key is missing.
+- The key envelope is versioned for a future master-password/key-wrapping layer.
+
+### Security note
+
+The SQLite database stores credential secrets encrypted at rest. The separate local vault key and exported project archives remain sensitive.
+
+<details>
+<summary>Pre-public development history</summary>
+
+The versions below were internal development milestones before the initial public alpha release.
 
 ## [0.14.0] - 2026-08-26
 
@@ -240,3 +274,5 @@ The project is currently in alpha development. Version numbers below describe de
 - Host and service inventory.
 - REST API and OpenAPI documentation.
 - Localhost-only Docker binding by default.
+
+</details>

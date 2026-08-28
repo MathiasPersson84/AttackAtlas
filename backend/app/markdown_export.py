@@ -4,6 +4,7 @@ import zipfile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from .models import Project, Host, Service, Account, Credential, Share, Edge, Scan
+from .vault import decrypt_secret
 
 
 def _safe_name(value: str) -> str:
@@ -105,7 +106,7 @@ def build_markdown_export(project: Project, db: Session):
             a = account_by_id.get(c.account_id) if c.account_id else None
             h = host_by_id.get(c.host_id) if c.host_id else None
             identity = ((a.domain + '\\') if a and a.domain else '') + (a.username if a else 'Unassigned')
-            escaped_secret = _md(c.secret).replace('`', '\\`')
+            escaped_secret = _md(decrypt_secret(c.secret)).replace('`', '\\`')
             cred_lines += [
                 f'## {_md(identity)}', '',
                 f'- **Type:** {_md(c.kind)}',

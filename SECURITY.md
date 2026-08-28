@@ -12,9 +12,15 @@ AttackAtlas projects may contain:
 - assessment notes
 - attack paths and access relationships
 
-Credential secrets are currently stored in plaintext in the local SQLite database. Complete Markdown exports may also contain plaintext credentials.
+Credential secrets are encrypted at rest in SQLite using AES-256-GCM. AttackAtlas automatically creates a random 256-bit local vault key in `./secrets/credential-vault.json`.
 
-Keep the AttackAtlas data directory and exported archives on trusted or encrypted storage. Do not commit real engagement data to a public repository.
+This is protection for the database **at rest**, not authentication. There is currently no master password: the running application can automatically load the local vault key. If an attacker obtains both `attackatlas.db` and `credential-vault.json`, they can decrypt stored credentials.
+
+Existing plaintext credentials from older AttackAtlas databases are migrated to encrypted values on first startup. If an encrypted database is present but the vault key is missing, AttackAtlas intentionally refuses to start rather than generate a replacement key.
+
+The key-file format is versioned and structured so a future master-password layer can wrap the existing data-encryption key without re-encrypting every credential. Credential API responses are marked `Cache-Control: no-store`; however, secrets are still available to the running application and browser when explicitly displayed/copied. Complete Markdown exports may still contain plaintext credentials.
+
+Keep the AttackAtlas `data/` and `secrets/` directories and exported archives on trusted or encrypted storage. Back up the database and vault key together, but do not publish either. Do not commit real engagement data to a public repository.
 
 AttackAtlas binds to `127.0.0.1` by default. If you intentionally expose it on another interface, treat the application as containing sensitive data and protect access accordingly.
 

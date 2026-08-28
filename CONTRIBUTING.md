@@ -1,28 +1,24 @@
 # Contributing to AttackAtlas
 
-Contributions, bug reports and focused feature proposals are welcome.
+Bug reports, focused feature proposals and code contributions are welcome.
 
-## Development principles
+AttackAtlas is intended to remain local-first, lightweight, usable without external services and easy to run in isolated lab or assessment environments.
 
-AttackAtlas is intended to remain:
+## Issues first for larger changes
 
-- local-first
-- lightweight in CPU and memory use
-- usable without external services
-- easy to run through Docker
-- suitable for isolated lab and assessment environments
+For substantial features, architectural changes or new runtime dependencies, open an Issue before investing in an implementation. Small fixes do not need prior discussion.
 
-New runtime dependencies or background services should therefore have a clear benefit.
+## Code contributions
 
-## Workflow
+1. Fork the repository.
+2. Create a focused branch in your fork.
+3. Keep unrelated refactors out of the change.
+4. Run the available checks locally.
+5. Submit a pull request from your fork.
 
-1. Fork or clone the repository.
-2. Create a focused feature branch.
-3. Make the change and keep unrelated refactors separate.
-4. Run the available checks locally when possible.
-5. Open a pull request describing the problem, approach and user-visible impact.
+Pull requests are reviewed before merge. There is no expectation that every proposed feature will be accepted; changes should fit the project's scope and lightweight/local-first goals.
 
-## Local Docker build
+## Local checks
 
 Docker Compose v2:
 
@@ -38,8 +34,8 @@ docker-compose up --build
 
 The application is served on `http://127.0.0.1:7843` by default.
 
-## CI
+GitHub Actions validates the Python backend, builds the frontend and performs a Docker image build.
 
-GitHub Actions validates the Python backend, builds the frontend and performs a Docker image build on pushes to `main` and pull requests.
+## Sensitive data
 
-Before opening a pull request, avoid committing local databases, exported engagement data, `.env` files, credentials, scan artifacts or `node_modules`.
+Never commit real engagement data, credentials, hashes, local databases, `.env` files, scan artifacts or exported project archives. Screenshots and examples must use synthetic data and should have metadata removed before being committed.

@@ -6,12 +6,12 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 ATTACKATLAS_DATA_DIR=/data ATTACKATLAS_STATIC_DIR=/app/static
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 ATTACKATLAS_DATA_DIR=/data ATTACKATLAS_VAULT_KEY_FILE=/secrets/credential-vault.json ATTACKATLAS_STATIC_DIR=/app/static
 WORKDIR /app
 COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app ./app
 COPY --from=frontend /src/dist ./static
-RUN mkdir -p /data
+RUN mkdir -p /data /secrets
 EXPOSE 7843
 CMD ["uvicorn","app.main:app","--host","0.0.0.0","--port","7843","--workers","1"]
