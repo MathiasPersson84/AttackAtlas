@@ -153,7 +153,7 @@ The versions below were internal development milestones before the initial publi
 ### Added
 - GitHub repository metadata, issue templates and pull request template.
 - GitHub Actions CI for backend validation, frontend build and Docker image build.
-- MIT license, contribution guide and security policy.
+- GPLv3 license, contribution guide and security policy.
 
 ### Changed
 - Repository documentation prepared for public source control.

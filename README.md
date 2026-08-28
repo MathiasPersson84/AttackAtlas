@@ -121,4 +121,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GNU General Public License v3.0 (GPLv3) — see [LICENSE](LICENSE).
