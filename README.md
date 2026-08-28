@@ -6,6 +6,9 @@ AttackAtlas is a lightweight, local-first workspace for visualizing hosts, servi
 
 Everything runs locally and is accessed through a browser.
 
+This tool was born out of the idea to be able to visually document and present attack paths discovered during a CTF like an Active Directory range, or even a single machine in a semi-automated way. 
+Historically I've been using web tools like Draw.io to do this but it's a lot of manual work which frankly took to much time, especially when doing write-ups or walkthroughs.
+
 ![AttackAtlas overview](docs/images/attackatlas-overview.png)
 
 ## Highlights
