@@ -18,7 +18,10 @@ Historically I've been using web tools like Draw.io to do this but it's a lot of
 - Nmap XML import with services, NSE output and per-port scan context
 - Host templates for common Windows, Linux and macOS systems
 - User and credential management with host associations
-- Project notes and portable Markdown export
+- Structured host notes with Markdown, categories, tags, timestamps, and screenshot evidence
+- Live project Report that updates as host notes change
+- Report Timeline and editable project-level report text
+- Portable Markdown report export with attached evidence images
 - SVG snapshots of the current visualization
 - REST API with OpenAPI documentation
 - Local SQLite storage and a single-container Docker deployment
@@ -118,6 +121,17 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 - Python / FastAPI / SQLite
 - React / TypeScript / Vite
 - Docker / Docker Compose
+
+
+## Live Report and host notes
+
+AttackAtlas includes structured per-host notes for documenting enumeration, access, privilege escalation, credentials, commands, findings, and other assessment activity. Notes support Markdown, timestamps, tags, and screenshot evidence.
+
+The **Report** view is live: linked host notes appear automatically and changes made to those notes are reflected in the report. You can also add project-level report text directly from the Report view and switch to **Timeline** for a chronological view of recorded activity.
+
+Screenshots can be attached as evidence and are stored under the project data directory. Markdown report exports include the referenced images in an `assets/` directory so the report remains portable.
+
+Credential secrets are redacted in the generated live `report.md` by default. Treat all project exports and evidence as sensitive assessment data.
 
 ## License
 

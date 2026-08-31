@@ -1,15 +1,17 @@
 import os
 import csv
 import io
+import uuid
+import shutil
 from pathlib import Path
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from .db import Base, engine, SessionLocal, get_db, apply_lightweight_migrations
-from .models import Project, Host, Service, Account, Credential, Share, Edge, Scan
-from .schemas import ProjectCreate, ProjectUpdate, HostCreate, HostUpdate, HostReorder, AccountCreate, AccountUpdate, CredentialCreate, CredentialUpdate, ShareCreate, EdgeCreate, EdgeUpdate
+from .db import Base, engine, SessionLocal, get_db, apply_lightweight_migrations, DATA_DIR
+from .models import Project, Host, Service, Account, Credential, Share, Edge, Scan, NoteEntry, Attachment, ReportBlock
+from .schemas import ProjectCreate, ProjectUpdate, HostCreate, HostUpdate, HostReorder, AccountCreate, AccountUpdate, CredentialCreate, CredentialUpdate, ShareCreate, EdgeCreate, EdgeUpdate, NoteEntryCreate, NoteEntryUpdate, AttachmentUpdate, ReportBlockCreate, ReportBlockUpdate
 from .nmap_import import import_nmap_xml
 from .markdown_export import build_markdown_export
 from .vault import initialize_vault, encrypt_secret, decrypt_secret, vault_status, VaultError
@@ -123,6 +125,10 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     db.query(Credential).filter_by(project_id=project_id).delete(synchronize_session=False)
     db.query(Share).filter_by(project_id=project_id).delete(synchronize_session=False)
     db.query(Account).filter_by(project_id=project_id).delete(synchronize_session=False)
+    db.query(Attachment).filter_by(project_id=project_id).delete(synchronize_session=False)
+    db.query(NoteEntry).filter_by(project_id=project_id).delete(synchronize_session=False)
+    db.query(ReportBlock).filter_by(project_id=project_id).delete(synchronize_session=False)
+    shutil.rmtree(DATA_DIR/'projects'/str(project_id), ignore_errors=True)
     db.query(Scan).filter_by(project_id=project_id).delete(synchronize_session=False)
     db.query(Host).filter_by(project_id=project_id).delete(synchronize_session=False)
     db.delete(project)
@@ -191,6 +197,13 @@ def delete_host(project_id: int, host_id: int, db: Session = Depends(get_db)):
     ).delete(synchronize_session=False)
     db.query(Credential).filter_by(project_id=project_id, host_id=host_id).update({'host_id': None}, synchronize_session=False)
     db.query(Account).filter_by(project_id=project_id, host_id=host_id).update({'host_id': None}, synchronize_session=False)
+    note_ids=[x[0] for x in db.query(NoteEntry.id).filter_by(project_id=project_id,host_id=host_id).all()]
+    if note_ids:
+        for a in db.query(Attachment).filter(Attachment.note_id.in_(note_ids)).all():
+            try: (DATA_DIR/'projects'/str(project_id)/'attachments'/a.stored_filename).unlink(missing_ok=True)
+            except Exception: pass
+        db.query(Attachment).filter(Attachment.note_id.in_(note_ids)).delete(synchronize_session=False)
+        db.query(NoteEntry).filter(NoteEntry.id.in_(note_ids)).delete(synchronize_session=False)
     db.query(Share).filter_by(project_id=project_id, host_id=host_id).delete(synchronize_session=False)
     db.query(Service).filter_by(host_id=host_id).delete(synchronize_session=False)
     db.delete(h)
@@ -462,6 +475,100 @@ async def import_nmap(project_id: int, file: UploadFile = File(...), db: Session
 
 
 STATIC_DIR = Path(os.environ.get('ATTACKATLAS_STATIC_DIR', '/app/static'))
+
+def attachment_json(a: Attachment):
+    return {'id': a.id, 'note_id': a.note_id, 'filename': a.filename, 'mime_type': a.mime_type, 'size': a.size, 'caption': a.caption or '', 'url': f'/api/v1/attachments/{a.id}/file', 'created_at': a.created_at}
+
+def note_json(n: NoteEntry, db: Session):
+    return {'id': n.id, 'host_id': n.host_id, 'category': n.category, 'title': n.title, 'content_markdown': n.content_markdown, 'tags': n.tags or '', 'created_at': n.created_at, 'updated_at': n.updated_at, 'sort_order': n.sort_order or 0, 'attachments': [attachment_json(a) for a in db.query(Attachment).filter_by(note_id=n.id).order_by(Attachment.id).all()]}
+
+def report_block_json(b: ReportBlock):
+    return {'id': b.id, 'title': b.title, 'content_markdown': b.content_markdown, 'sort_order': b.sort_order or 0, 'created_at': b.created_at, 'updated_at': b.updated_at}
+
+@app.get('/api/v1/projects/{project_id}/notes')
+def project_notes(project_id: int, db: Session = Depends(get_db)):
+    return [note_json(n, db) for n in db.query(NoteEntry).filter_by(project_id=project_id).order_by(NoteEntry.created_at, NoteEntry.id).all()]
+
+@app.post('/api/v1/projects/{project_id}/notes')
+def create_note(project_id: int, payload: NoteEntryCreate, db: Session = Depends(get_db)):
+    if not db.query(Project).filter_by(id=project_id).first(): raise HTTPException(404, 'Project not found')
+    if payload.host_id is not None and not db.query(Host).filter_by(id=payload.host_id, project_id=project_id).first(): raise HTTPException(400, 'Host does not belong to this project')
+    n=NoteEntry(project_id=project_id, **payload.model_dump()); db.add(n); db.commit(); db.refresh(n); return note_json(n, db)
+
+@app.patch('/api/v1/projects/{project_id}/notes/{note_id}')
+def update_note(project_id: int, note_id: int, payload: NoteEntryUpdate, db: Session = Depends(get_db)):
+    n=db.query(NoteEntry).filter_by(id=note_id, project_id=project_id).one_or_none()
+    if n is None: raise HTTPException(404, 'Note not found')
+    for k,v in payload.model_dump(exclude_none=True).items(): setattr(n,k,v)
+    from datetime import datetime
+    n.updated_at=datetime.utcnow(); db.commit(); db.refresh(n); return note_json(n, db)
+
+@app.delete('/api/v1/projects/{project_id}/notes/{note_id}')
+def delete_note(project_id: int, note_id: int, db: Session = Depends(get_db)):
+    n=db.query(NoteEntry).filter_by(id=note_id, project_id=project_id).one_or_none()
+    if n is None: raise HTTPException(404, 'Note not found')
+    for a in db.query(Attachment).filter_by(note_id=n.id).all():
+        try: (DATA_DIR/'projects'/str(project_id)/'attachments'/a.stored_filename).unlink(missing_ok=True)
+        except Exception: pass
+    db.delete(n); db.commit(); return {'ok': True}
+
+@app.post('/api/v1/projects/{project_id}/notes/{note_id}/attachments')
+async def upload_note_attachment(project_id: int, note_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    n=db.query(NoteEntry).filter_by(id=note_id, project_id=project_id).one_or_none()
+    if n is None: raise HTTPException(404, 'Note not found')
+    allowed={'image/png','.png','image/jpeg','.jpg','.jpeg','image/webp','.webp','image/gif','.gif'}
+    suffix=Path(file.filename or '').suffix.lower(); mime=(file.content_type or '').lower()
+    if mime not in allowed and suffix not in allowed: raise HTTPException(415, 'Only PNG, JPEG, WEBP and GIF images are supported')
+    raw=await file.read()
+    if len(raw)>15*1024*1024: raise HTTPException(413, 'Image too large (15 MB max)')
+    d=DATA_DIR/'projects'/str(project_id)/'attachments'; d.mkdir(parents=True, exist_ok=True)
+    stored=f'{uuid.uuid4().hex}{suffix or ".png"}'; (d/stored).write_bytes(raw)
+    a=Attachment(project_id=project_id,note_id=note_id,filename=Path(file.filename or 'screenshot.png').name,stored_filename=stored,mime_type=mime or 'image/png',size=len(raw)); db.add(a); db.commit(); db.refresh(a); return attachment_json(a)
+
+@app.get('/api/v1/attachments/{attachment_id}/file')
+def attachment_file(attachment_id: int, db: Session = Depends(get_db)):
+    a=db.query(Attachment).filter_by(id=attachment_id).one_or_none()
+    if a is None: raise HTTPException(404, 'Attachment not found')
+    path=DATA_DIR/'projects'/str(a.project_id)/'attachments'/a.stored_filename
+    if not path.exists(): raise HTTPException(404, 'Attachment file missing')
+    return FileResponse(path, media_type=a.mime_type, filename=a.filename)
+
+@app.patch('/api/v1/projects/{project_id}/attachments/{attachment_id}')
+def update_attachment(project_id: int, attachment_id: int, payload: AttachmentUpdate, db: Session = Depends(get_db)):
+    a=db.query(Attachment).filter_by(id=attachment_id, project_id=project_id).one_or_none()
+    if a is None: raise HTTPException(404, 'Attachment not found')
+    if payload.caption is not None: a.caption=payload.caption
+    db.commit(); db.refresh(a); return attachment_json(a)
+
+@app.delete('/api/v1/projects/{project_id}/attachments/{attachment_id}')
+def delete_attachment(project_id: int, attachment_id: int, db: Session = Depends(get_db)):
+    a=db.query(Attachment).filter_by(id=attachment_id, project_id=project_id).one_or_none()
+    if a is None: raise HTTPException(404, 'Attachment not found')
+    try: (DATA_DIR/'projects'/str(project_id)/'attachments'/a.stored_filename).unlink(missing_ok=True)
+    except Exception: pass
+    db.delete(a); db.commit(); return {'ok': True}
+
+@app.get('/api/v1/projects/{project_id}/report-blocks')
+def report_blocks(project_id: int, db: Session = Depends(get_db)):
+    return [report_block_json(b) for b in db.query(ReportBlock).filter_by(project_id=project_id).order_by(ReportBlock.sort_order, ReportBlock.id).all()]
+
+@app.post('/api/v1/projects/{project_id}/report-blocks')
+def create_report_block(project_id: int, payload: ReportBlockCreate, db: Session = Depends(get_db)):
+    order=db.query(ReportBlock).filter_by(project_id=project_id).count(); b=ReportBlock(project_id=project_id,sort_order=order,**payload.model_dump()); db.add(b); db.commit(); db.refresh(b); return report_block_json(b)
+
+@app.patch('/api/v1/projects/{project_id}/report-blocks/{block_id}')
+def update_report_block(project_id: int, block_id: int, payload: ReportBlockUpdate, db: Session = Depends(get_db)):
+    b=db.query(ReportBlock).filter_by(id=block_id, project_id=project_id).one_or_none()
+    if b is None: raise HTTPException(404, 'Report block not found')
+    for k,v in payload.model_dump(exclude_none=True).items(): setattr(b,k,v)
+    db.commit(); db.refresh(b); return report_block_json(b)
+
+@app.delete('/api/v1/projects/{project_id}/report-blocks/{block_id}')
+def delete_report_block(project_id: int, block_id: int, db: Session = Depends(get_db)):
+    b=db.query(ReportBlock).filter_by(id=block_id, project_id=project_id).one_or_none()
+    if b is None: raise HTTPException(404, 'Report block not found')
+    db.delete(b); db.commit(); return {'ok': True}
+
 if STATIC_DIR.exists():
     assets = STATIC_DIR / 'assets'
     if assets.exists():

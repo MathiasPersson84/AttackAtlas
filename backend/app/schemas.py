@@ -88,3 +88,30 @@ class EdgeUpdate(BaseModel):
     relation: str | None = None
     label: str | None = None
     directed: bool | None = None
+
+
+class NoteEntryCreate(BaseModel):
+    host_id: int | None = None
+    category: str = 'General'
+    title: str = ''
+    content_markdown: str = ''
+    tags: str = ''
+
+class NoteEntryUpdate(BaseModel):
+    category: str | None = None
+    title: str | None = None
+    content_markdown: str | None = None
+    tags: str | None = None
+    sort_order: int | None = None
+
+class AttachmentUpdate(BaseModel):
+    caption: str | None = None
+
+class ReportBlockCreate(BaseModel):
+    title: str = ''
+    content_markdown: str = ''
+
+class ReportBlockUpdate(BaseModel):
+    title: str | None = None
+    content_markdown: str | None = None
+    sort_order: int | None = None

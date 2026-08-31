@@ -1,10 +1,12 @@
+from pathlib import Path
 import io
 import re
 import zipfile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from .models import Project, Host, Service, Account, Credential, Share, Edge, Scan
+from .models import Project, Host, Service, Account, Credential, Share, Edge, Scan, NoteEntry, Attachment, ReportBlock
 from .vault import decrypt_secret
+from .db import DATA_DIR
 
 
 def _safe_name(value: str) -> str:
@@ -26,6 +28,8 @@ def build_markdown_export(project: Project, db: Session):
     shares = db.query(Share).filter_by(project_id=project_id).order_by(Share.host_id, Share.name).all()
     edges = db.query(Edge).filter_by(project_id=project_id).order_by(Edge.id).all()
     scans = db.query(Scan).filter_by(project_id=project_id).order_by(Scan.imported_at).all()
+    notes = db.query(NoteEntry).filter_by(project_id=project_id).order_by(NoteEntry.created_at, NoteEntry.id).all()
+    report_blocks = db.query(ReportBlock).filter_by(project_id=project_id).order_by(ReportBlock.sort_order, ReportBlock.id).all()
     account_by_id = {a.id: a for a in accounts}
     host_by_id = {h.id: h for h in hosts}
 
@@ -45,6 +49,29 @@ def build_markdown_export(project: Project, db: Session):
             f'- Attack paths: {len(edges)}',
             f'- Imported scans: {len(scans)}', ''
         ]
+        # Living report: manual project blocks plus linked host notes. Secrets are not included here.
+        report = [f'# {_md(project.name)} — Report', '', '> Generated from the live AttackAtlas report. Credential secrets are redacted from this report.', '']
+        for b in report_blocks:
+            report += [f'## {_md(b.title) or "Report Notes"}', '', _md(b.content_markdown), '']
+        if notes:
+            report += ['## Host Activity', '']
+        for h in hosts:
+            hn=[n for n in notes if n.host_id==h.id]
+            if not hn: continue
+            report += [f'### {_md(h.hostname or h.address)}', '', f'`{_md(h.address)}`', '']
+            for n in hn:
+                report += [f'#### {_md(n.title) or _md(n.category)}', '', f'**Category:** {_md(n.category)}  ', f'**Recorded:** {n.created_at.isoformat()}  ']
+                if n.tags: report += [f'**Tags:** {_md(n.tags)}  ']
+                report += ['', _md(n.content_markdown), '']
+                for a in db.query(Attachment).filter_by(note_id=n.id).order_by(Attachment.id).all():
+                    src=DATA_DIR/'projects'/str(project_id)/'attachments'/a.stored_filename
+                    ext=Path(a.filename).suffix or Path(a.stored_filename).suffix or '.png'
+                    asset=f'assets/{a.id:04d}-{_safe_name(Path(a.filename).stem)}{ext}'
+                    if src.exists(): zf.write(src, asset)
+                    report += [f'![{_md(a.caption or a.filename)}]({asset})', '']
+                    if a.caption: report += [f'*{_md(a.caption)}*', '']
+        zf.writestr('report.md', '\n'.join(report))
+
         zf.writestr('README.md', '\n'.join(overview))
 
         for h in hosts:

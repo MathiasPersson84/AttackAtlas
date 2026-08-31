@@ -39,3 +39,7 @@ GitHub Actions validates the Python backend, builds the frontend and performs a 
 ## Sensitive data
 
 Never commit real engagement data, credentials, hashes, local databases, `.env` files, scan artifacts or exported project archives. Screenshots and examples must use synthetic data and should have metadata removed before being committed.
+
+## Licensing of contributions
+
+By submitting a contribution, you agree that your contribution may be distributed under the GNU General Public License v3.0 (`GPL-3.0-only`), the license used by AttackAtlas.

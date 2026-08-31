@@ -96,3 +96,39 @@ class Edge(Base):
     relation = Column(String(64), nullable=False)
     label = Column(String(255), default='')
     directed = Column(Integer, default=1, nullable=False)
+
+
+class NoteEntry(Base):
+    __tablename__ = 'note_entries'
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey('projects.id', ondelete='CASCADE'), nullable=False, index=True)
+    host_id = Column(Integer, ForeignKey('hosts.id', ondelete='CASCADE'), nullable=True, index=True)
+    category = Column(String(64), default='General', nullable=False)
+    title = Column(String(255), default='', nullable=False)
+    content_markdown = Column(Text, default='', nullable=False)
+    tags = Column(String(512), default='', nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    sort_order = Column(Integer, default=0, nullable=False)
+
+class Attachment(Base):
+    __tablename__ = 'attachments'
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey('projects.id', ondelete='CASCADE'), nullable=False, index=True)
+    note_id = Column(Integer, ForeignKey('note_entries.id', ondelete='CASCADE'), nullable=False, index=True)
+    filename = Column(String(255), nullable=False)
+    stored_filename = Column(String(255), nullable=False, unique=True)
+    mime_type = Column(String(128), nullable=False)
+    size = Column(Integer, default=0, nullable=False)
+    caption = Column(String(512), default='', nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+class ReportBlock(Base):
+    __tablename__ = 'report_blocks'
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey('projects.id', ondelete='CASCADE'), nullable=False, index=True)
+    title = Column(String(255), default='', nullable=False)
+    content_markdown = Column(Text, default='', nullable=False)
+    sort_order = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

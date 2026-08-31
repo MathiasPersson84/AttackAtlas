@@ -295,3 +295,92 @@
   object-fit: contain;
   object-position: left center;
 }
+.sidebar-view-tabs-four{grid-template-columns:repeat(4,1fr)}
+.sidebar-report-view{padding:10px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+.report-page{flex:1;min-height:0;overflow:auto;padding:24px 32px;background:var(--bg)}
+.report-page-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;max-width:1100px;margin:0 auto 20px}.report-page-head h2{margin:0;font-size:24px}.report-page-head p{color:var(--muted);margin:6px 0}.report-page-actions{display:flex;gap:8px;flex-wrap:wrap}.report-page-actions button.active{border-color:var(--accent);color:var(--accent)}
+.report-document,.timeline-view{max-width:1000px;margin:auto;background:rgba(13,22,30,.75);border:1px solid var(--line);border-radius:14px;padding:28px}.report-document section{margin-bottom:28px}.report-block-head,.report-note-head,.report-section-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.report-block-head span,.report-section-title span,.report-note-head span{font-size:10px;letter-spacing:.12em;color:var(--accent);text-transform:uppercase}.report-block-head button,.report-note-head button{padding:5px}.report-host{border-top:1px solid var(--line);padding-top:18px;margin-top:20px}.report-host h3 small{font-weight:400;color:var(--muted);margin-left:8px}.report-note{margin:12px 0;padding:16px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.018)}.report-note-head>div:first-child{display:flex;flex-direction:column;gap:3px}.report-note-head small{color:var(--muted)}.markdown-content{white-space:pre-wrap;word-break:break-word;font:inherit;line-height:1.55;background:transparent;border:0;padding:0;color:var(--text)}
+.evidence-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}.evidence-grid figure,.note-attachments figure{margin:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#080d12}.evidence-grid img,.note-attachments img{width:100%;max-height:360px;object-fit:contain;display:block}.evidence-grid figcaption,.note-attachments figcaption{display:flex;justify-content:space-between;align-items:center;padding:8px;color:var(--muted);font-size:12px}.evidence-grid figcaption button,.note-attachments figcaption button{padding:3px}.note-evidence-actions{margin-top:10px}.note-evidence-actions label,.note-attachment-head label{cursor:pointer;display:inline-flex;gap:6px;align-items:center}.note-attachments{border-top:1px solid var(--line);padding-top:12px;display:grid;gap:10px}.note-attachment-head{display:flex;justify-content:space-between;align-items:center}.note-entry-modal{width:min(760px,94vw)}
+.host-note-card{border:1px solid var(--line);border-radius:8px;margin:8px 0;padding:8px}.host-note-card>button{display:flex;flex-direction:column;align-items:flex-start;width:100%;background:none;border:0}.host-note-card span,.host-note-card small{color:var(--muted);font-size:11px}.host-note-card small{display:flex;gap:5px;align-items:center}.legacy-notes{margin-top:14px}.timeline-entry{display:grid;grid-template-columns:170px 160px 130px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}.timeline-entry time,.timeline-entry span{color:var(--muted);font-size:12px}.timeline-entry button{text-align:left;background:none;border:0;color:var(--text)}
+
+
+/* Reporting buttons: use the same visual language as standard AttackAtlas controls. */
+.report-page-actions button,
+.report-section-title > button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 8px 11px;
+  border: 1px solid #2a3b45;
+  border-radius: 7px;
+  background: #101a20;
+  color: #a9bfca;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.report-page-actions button:hover,
+.report-section-title > button:hover {
+  border-color: #348bc5;
+  color: #e7f3ff;
+  background: #102431;
+}
+
+.report-page-actions button.active {
+  border-color: #2a6fa7;
+  background: #14283a;
+  color: #d9efff;
+}
+
+.report-page-actions button svg,
+.report-section-title > button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Compact icon actions use the same treatment as existing host/credential action buttons. */
+.report-block-head button,
+.report-note-head button,
+.evidence-grid figcaption button,
+.note-attachments figcaption button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #263640;
+  border-radius: 6px;
+  background: #142028;
+  color: #91a5b1;
+  cursor: pointer;
+}
+
+.report-block-head button:hover,
+.report-note-head button:hover,
+.evidence-grid figcaption button:hover,
+.note-attachments figcaption button:hover {
+  background: #1a2a34;
+  color: #e1ebf0;
+}
+
+.report-block-head button svg,
+.report-note-head button svg,
+.evidence-grid figcaption button svg,
+.note-attachments figcaption button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Timeline title is intentionally text-like, matching list controls rather than a white native button. */
+.timeline-entry button {
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+}
+.timeline-entry button:hover {
+  color: #72c4fa;
+}
